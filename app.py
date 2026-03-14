@@ -1,8 +1,8 @@
 from PIL import Image
 from flask import Flask, render_template, request
 
-from expiry_predictor import predict_expiry_days, warmup_expiry_model
-from image_model import predict_item, warmup_image_model
+from expiry_predictor import predict_expiry_days
+from image_model import predict_item
 
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
@@ -11,14 +11,6 @@ LOCATIONS = ["Urban", "Rural", "Coastal", "Mountain"]
 SEASONS = ["Summer", "Winter", "Spring", "Monsoon"]
 
 app = Flask(__name__)
-
-
-def _warmup_models():
-    warmup_image_model()
-    warmup_expiry_model()
-
-
-_warmup_models()
 
 
 def _is_allowed_file(filename):

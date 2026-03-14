@@ -1,4 +1,5 @@
 from pathlib import Path
+from functools import lru_cache
 
 import numpy as np
 import tensorflow as tf
@@ -75,15 +76,20 @@ VEGETABLES = {
 }
 
 _MODEL_PATH = Path(__file__).resolve().parent / "FV.h5"
-_MODEL = tf.keras.models.load_model(
-    str(_MODEL_PATH), custom_objects={"DepthwiseConv2D": CompatDepthwiseConv2D}, compile=False
-)
+
+
+@lru_cache(maxsize=1)
+def _get_model():
+    return tf.keras.models.load_model(
+        str(_MODEL_PATH), custom_objects={"DepthwiseConv2D": CompatDepthwiseConv2D}, compile=False
+    )
 
 
 def _predict_from_array(img_array):
+    model = _get_model()
     img_array = img_array / 255.0
     img_array = np.expand_dims(img_array, [0])
-    answer = _MODEL.predict(img_array, verbose=0)
+    answer = model.predict(img_array, verbose=0)
     y_class = answer.argmax(axis=-1)
     idx = int(y_class[0])
 
