@@ -81,5 +81,13 @@ def index():
     return render_template("index.html", **context)
 
 
+import traceback
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error(f"Server Error: {error}")
+    app.logger.error(traceback.format_exc())
+    return f"<h1>Internal Server Error</h1><pre>{traceback.format_exc()}</pre>", 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
