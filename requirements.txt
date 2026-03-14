@@ -1,8 +1,10 @@
 requests==2.29.0
 beautifulsoup4
-streamlit
 numpy
+pandas
+scikit-learn
+joblib
 Pillow
 flask
-keras~=2.6.0
-tensorflow~=2.6.0
+gunicorn
+tensorflow>=2.21.0,<2.22

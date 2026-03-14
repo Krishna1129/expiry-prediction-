@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: fruit-veg-expiry
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --timeout 120
+    autoDeploy: true

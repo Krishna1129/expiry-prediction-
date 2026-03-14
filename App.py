@@ -1,75 +1,89 @@
-import streamlit as st
-from PIL import Image
-import requests
-from bs4 import BeautifulSoup
-import numpy as np
-from keras.preprocessing.image import load_img, img_to_array
-from keras.models import load_model
+from pathlib import Path
 
-model = load_model('FV.h5')
+from flask import Flask, render_template, request
+from werkzeug.utils import secure_filename
 
-labels = {0: 'apple', 1: 'banana', 2: 'beetroot', 3: 'bell pepper', 4: 'cabbage', 5: 'capsicum', 6: 'carrot',
-          7: 'cauliflower', 8: 'chilli pepper', 9: 'corn', 10: 'cucumber', 11: 'eggplant', 12: 'garlic', 13: 'ginger',
-          14: 'grapes', 15: 'jalepeno', 16: 'kiwi', 17: 'lemon', 18: 'lettuce',
-          19: 'mango', 20: 'onion', 21: 'orange', 22: 'paprika', 23: 'pear', 24: 'peas', 25: 'pineapple',
-          26: 'pomegranate', 27: 'potato', 28: 'raddish', 29: 'soy beans', 30: 'spinach', 31: 'sweetcorn',
-          32: 'sweetpotato', 33: 'tomato', 34: 'turnip', 35: 'watermelon'}
-
-fruits = ['Apple', 'Banana', 'Bello Pepper', 'Chilli Pepper', 'Grapes', 'Jalepeno', 'Kiwi', 'Lemon', 'Mango', 'Orange',
-          'Paprika', 'Pear', 'Pineapple', 'Pomegranate', 'Watermelon']
-vegetables = ['Beetroot', 'Cabbage', 'Capsicum', 'Carrot', 'Cauliflower', 'Corn', 'Cucumber', 'Eggplant', 'Ginger',
-              'Lettuce', 'Onion', 'Peas', 'Potato', 'Raddish', 'Soy Beans', 'Spinach', 'Sweetcorn', 'Sweetpotato',
-              'Tomato', 'Turnip']
+from expiry_predictor import predict_expiry_days
+from image_model import predict_item
 
 
-def fetch_calories(prediction):
-    try:
-        url = 'https://www.google.com/search?&q=calories in ' + prediction
-        req = requests.get(url).text
-        scrap = BeautifulSoup(req, 'html.parser')
-        calories = scrap.find("div", class_="BNeawe iBp4i AP7Wnd").text
-        return calories
-    except Exception as e:
-        st.error("Can't able to fetch the Calories")
-        print(e)
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "upload_images"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
+STORAGE_TYPES = ["Room", "Refrigerated", "ColdStorage"]
+LOCATIONS = ["Urban", "Rural", "Coastal", "Mountain"]
+SEASONS = ["Summer", "Winter", "Spring", "Monsoon"]
+
+app = Flask(__name__)
 
 
-def prepare_image(img_path):
-    img = load_img(img_path, target_size=(224, 224, 3))
-    img = img_to_array(img)
-    img = img / 255
-    img = np.expand_dims(img, [0])
-    answer = model.predict(img)
-    y_class = answer.argmax(axis=-1)
-    print(y_class)
-    y = " ".join(str(x) for x in y_class)
-    y = int(y)
-    res = labels[y]
-    print(res)
-    return res.capitalize()
+def _is_allowed_file(filename):
+    if not filename or "." not in filename:
+        return False
+    return filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def run():
-    st.title("Fruits🍍-Vegetable🍅 Classification")
-    img_file = st.file_uploader("Choose an Image", type=["jpg", "png"])
-    if img_file is not None:
-        img = Image.open(img_file).resize((250, 250))
-        st.image(img, use_column_width=False)
-        save_image_path = './upload_images/' + img_file.name
-        with open(save_image_path, "wb") as f:
-            f.write(img_file.getbuffer())
+@app.route("/", methods=["GET", "POST"])
+def index():
+    context = {
+        "result": None,
+        "error": None,
+        "storage_types": STORAGE_TYPES,
+        "locations": LOCATIONS,
+        "seasons": SEASONS,
+    }
 
-        # if st.button("Predict"):
-        if img_file is not None:
-            result = prepare_image(save_image_path)
-            if result in vegetables:
-                st.info('**Category : Vegetables**')
-            else:
-                st.info('**Category : Fruit**')
-            st.success("**Predicted : " + result + '**')
-            cal = fetch_calories(result)
-            if cal:
-                st.warning('**' + cal + '(100 grams)**')
+    if request.method == "POST":
+        image_file = request.files.get("image")
+        if image_file is None or image_file.filename == "":
+            context["error"] = "Please upload an image file."
+            return render_template("index.html", **context)
+
+        if not _is_allowed_file(image_file.filename):
+            context["error"] = "Allowed image types: jpg, jpeg, png."
+            return render_template("index.html", **context)
+
+        try:
+            avg_temp_c = float(request.form.get("avg_temp_c", ""))
+            humidity_pct = float(request.form.get("humidity_pct", ""))
+            storage_type = request.form.get("storage_type", "")
+            location = request.form.get("location", "")
+            season = request.form.get("season", "")
+
+            if storage_type not in STORAGE_TYPES:
+                raise ValueError("Invalid storage type")
+            if location not in LOCATIONS:
+                raise ValueError("Invalid location")
+            if season not in SEASONS:
+                raise ValueError("Invalid season")
+
+            file_name = secure_filename(image_file.filename)
+            image_path = UPLOAD_DIR / file_name
+            image_file.save(image_path)
+
+            item_name, item_type = predict_item(str(image_path))
+            expiry_days = predict_expiry_days(
+                item_name=item_name,
+                item_type=item_type,
+                avg_temp_c=avg_temp_c,
+                humidity_pct=humidity_pct,
+                storage_type=storage_type,
+                location=location,
+                season=season,
+            )
+
+            context["result"] = {
+                "item_name": item_name,
+                "item_type": item_type,
+                "expiry_days": expiry_days,
+            }
+        except Exception as exc:
+            context["error"] = f"Prediction failed: {exc}"
+
+    return render_template("index.html", **context)
 
 
-run()
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=False)
