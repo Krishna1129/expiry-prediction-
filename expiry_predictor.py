@@ -42,3 +42,7 @@ def predict_expiry_days(
     )
     pred = float(model.predict(row)[0])
     return max(1, int(round(pred)))
+
+
+def warmup_expiry_model():
+    _load_model()
