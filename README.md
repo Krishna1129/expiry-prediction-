@@ -24,7 +24,7 @@ This project combines two models in one Flask web app:
 
 ## Project Files
 
-1. App.py
+1. app.py
 : Main Flask web app (UI + integrated prediction flow).
 2. image_model.py
 : Vision inference module.
@@ -87,7 +87,7 @@ Option 1 (Windows helper script):
 Option 2 (direct command):
 
 ```bash
-python App.py
+python app.py
 ```
 
 Open:
