@@ -3,6 +3,9 @@ services:
     name: fruit-veg-expiry
     env: python
     plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --timeout 120
     autoDeploy: true

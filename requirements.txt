@@ -1,10 +1,10 @@
 requests==2.29.0
 beautifulsoup4
-numpy
+numpy>=1.26,<2.0
 pandas
 scikit-learn
 joblib
 Pillow
 flask
 gunicorn
-tensorflow>=2.21.0,<2.22
+tensorflow==2.16.2
