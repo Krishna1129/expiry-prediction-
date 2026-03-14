@@ -2,15 +2,7 @@ from pathlib import Path
 from functools import lru_cache
 
 import numpy as np
-import tensorflow as tf
 from PIL import Image
-
-
-class CompatDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
-    @classmethod
-    def from_config(cls, config):
-        config.pop("groups", None)
-        return super().from_config(config)
 
 
 LABELS = {
@@ -80,6 +72,14 @@ _MODEL_PATH = Path(__file__).resolve().parent / "FV.h5"
 
 @lru_cache(maxsize=1)
 def _get_model():
+    import tensorflow as tf
+
+    class CompatDepthwiseConv2D(tf.keras.layers.DepthwiseConv2D):
+        @classmethod
+        def from_config(cls, config):
+            config.pop("groups", None)
+            return super().from_config(config)
+
     return tf.keras.models.load_model(
         str(_MODEL_PATH), custom_objects={"DepthwiseConv2D": CompatDepthwiseConv2D}, compile=False
     )
@@ -100,13 +100,13 @@ def _predict_from_array(img_array):
 
 def predict_item(image_input):
     if isinstance(image_input, (str, Path)):
-        img = tf.keras.preprocessing.image.load_img(image_input, target_size=(224, 224, 3))
-        img = tf.keras.preprocessing.image.img_to_array(img)
+        img = Image.open(image_input).convert("RGB").resize((224, 224))
+        img = np.asarray(img, dtype=np.float32)
         return _predict_from_array(img)
 
     if isinstance(image_input, Image.Image):
         resized = image_input.convert("RGB").resize((224, 224))
-        img = tf.keras.preprocessing.image.img_to_array(resized)
+        img = np.asarray(resized, dtype=np.float32)
         return _predict_from_array(img)
 
     raise TypeError("image_input must be a file path or PIL.Image.Image")

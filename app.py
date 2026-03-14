@@ -13,6 +13,11 @@ SEASONS = ["Summer", "Winter", "Spring", "Monsoon"]
 app = Flask(__name__)
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}, 200
+
+
 def _is_allowed_file(filename):
     if not filename or "." not in filename:
         return False
