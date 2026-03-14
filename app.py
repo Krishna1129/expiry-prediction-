@@ -24,11 +24,18 @@ def _is_allowed_file(filename):
     return filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+import os
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     context = {
         "result": None,
         "error": None,
+        "image_url": None,
         "storage_types": STORAGE_TYPES,
         "locations": LOCATIONS,
         "seasons": SEASONS,
@@ -45,6 +52,12 @@ def index():
             return render_template("index.html", **context)
 
         try:
+            filename = secure_filename(image_file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            image_file.save(filepath)
+            
+            context["image_url"] = f"static/uploads/{filename}"
+
             avg_temp_c = float(request.form.get("avg_temp_c", ""))
             humidity_pct = float(request.form.get("humidity_pct", ""))
             storage_type = request.form.get("storage_type", "")
@@ -58,7 +71,7 @@ def index():
             if season not in SEASONS:
                 raise ValueError("Invalid season")
 
-            uploaded_img = Image.open(image_file.stream).convert("RGB")
+            uploaded_img = Image.open(filepath).convert("RGB")
             item_name, item_type = predict_item(uploaded_img)
             expiry_days = predict_expiry_days(
                 item_name=item_name,

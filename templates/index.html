@@ -7,70 +7,141 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="background-decor decor-1"></div>
+    <div class="background-decor decor-2"></div>
     <main class="page">
-        <section class="card">
-            <h1>Produce Recognition + Expiry Prediction</h1>
-            <p class="subtitle">Upload an image and provide storage conditions to estimate shelf life.</p>
+        <header class="header">
+            <h1>🥕 Produce Tracker 🍎</h1>
+            <p class="subtitle">AI-powered recognition and shelf-life prediction</p>
+        </header>
+        
+        <section class="card main-card">
 
-            <form method="post" enctype="multipart/form-data" class="form-grid">
-                <label>
-                    Image
-                    <input type="file" name="image" accept=".jpg,.jpeg,.png" required>
-                </label>
+            <form method="post" enctype="multipart/form-data" class="form-container">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label>
+                            Upload Image
+                            <div class="file-upload-wrapper">
+                                <input type="file" name="image" id="imageInput" accept=".jpg,.jpeg,.png" required onchange="previewImage(event)">
+                                <div class="upload-placeholder" id="uploadPlaceholder">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    <span>Click to browse</span>
+                                </div>
+                                <img id="imagePreview" alt="Image Preview" class="image-preview" style="display: none;">
+                            </div>
+                        </label>
+                    </div>
 
-                <label>
-                    Average Temperature (C)
-                    <input type="number" name="avg_temp_c" step="0.1" min="-10" max="60" value="25" required>
-                </label>
+                    <div class="input-group">
+                        <label>
+                            Avg Temperature (°C)
+                            <input type="number" name="avg_temp_c" step="0.1" min="-10" max="60" value="25" required>
+                        </label>
+                    </div>
 
-                <label>
-                    Humidity (%)
-                    <input type="number" name="humidity_pct" step="0.1" min="0" max="100" value="60" required>
-                </label>
+                    <div class="input-group">
+                        <label>
+                            Humidity (%)
+                            <input type="number" name="humidity_pct" step="0.1" min="0" max="100" value="60" required>
+                        </label>
+                    </div>
 
-                <label>
-                    Storage Type
-                    <select name="storage_type" required>
-                        {% for value in storage_types %}
-                        <option value="{{ value }}">{{ value }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
+                    <div class="input-group">
+                        <label>
+                            Storage Type
+                            <select name="storage_type" required>
+                                {% for value in storage_types %}
+                                <option value="{{ value }}">{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
 
-                <label>
-                    Location
-                    <select name="location" required>
-                        {% for value in locations %}
-                        <option value="{{ value }}">{{ value }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
+                    <div class="input-group">
+                        <label>
+                            Location
+                            <select name="location" required>
+                                {% for value in locations %}
+                                <option value="{{ value }}">{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
 
-                <label>
-                    Season
-                    <select name="season" required>
-                        {% for value in seasons %}
-                        <option value="{{ value }}">{{ value }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
+                    <div class="input-group full-width">
+                        <label>
+                            Season
+                            <select name="season" required>
+                                {% for value in seasons %}
+                                <option value="{{ value }}">{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </div>
 
-                <button type="submit">Predict</button>
+                <div class="actions">
+                    <button type="submit" class="btn-primary">Predict Expiry</button>
+                </div>
             </form>
 
             {% if error %}
-            <div class="alert error">{{ error }}</div>
+            <div class="alert error">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {{ error }}
+            </div>
             {% endif %}
 
             {% if result %}
-            <div class="result">
-                <h2>Result</h2>
-                <p><strong>Item Name:</strong> {{ result.item_name }}</p>
-                <p><strong>Item Type:</strong> {{ result.item_type }}</p>
-                <p><strong>Expiry Days:</strong> {{ result.expiry_days }}</p>
+            <div class="result-container">
+                <div class="result-image-col">
+                    {% if image_url %}
+                    <img src="{{ image_url }}" alt="Uploaded Produce" class="result-image">
+                    {% endif %}
+                </div>
+                <div class="result-col">
+                    <h2>Prediction Results</h2>
+                    <div class="result-badge-group">
+                        <div class="result-badge">
+                            <span class="badge-label">Item</span>
+                            <span class="badge-value">{{ result.item_name }}</span>
+                        </div>
+                        <div class="result-badge">
+                            <span class="badge-label">Type</span>
+                            <span class="badge-value">{{ result.item_type }}</span>
+                        </div>
+                    </div>
+                    <div class="expiry-card">
+                        <span class="expiry-label">Estimated Expiry In</span>
+                        <span class="expiry-value">{{ result.expiry_days }} <small>Days</small></span>
+                    </div>
+                </div>
             </div>
             {% endif %}
         </section>
     </main>
+
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const placeholder = document.getElementById('uploadPlaceholder');
+            const preview = document.getElementById('imagePreview');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+            }
+        }
+    </script>
 </body>
 </html>
